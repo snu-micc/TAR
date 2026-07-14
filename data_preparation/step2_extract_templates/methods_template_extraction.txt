@@ -1,0 +1,149 @@
+================================================================================
+REACTION TEMPLATE EXTRACTION — ICML PAPER DRAFT
+================================================================================
+
+
+================================================================================
+MAIN BODY
+================================================================================
+
+2.X  Reaction Template Extraction
+
+Reaction templates are atom-mapped SMARTS patterns that encode the chemical
+transformation occurring at a reaction center, specifying which bonds are formed
+or broken without regard to the broader molecular scaffold. Two reactions share
+a template if and only if they proceed through the same local chemical
+transformation, making templates a compact, interpretable representation of
+reaction mechanisms.
+
+We extracted templates from the Pistachio dataset (~2M atom-mapped reactions)
+using the LocalTemplate framework [CITATION]. For each reaction, the extractor
+performs four sequential steps: (i) separating true reactants from spectator
+reagents based on atom-mapping, (ii) identifying changed atoms by comparing
+atomic properties between reactant and product states, (iii) constructing SMARTS
+fragments by expanding r hops from the reaction center, and (iv) producing a
+canonical template via atom-map reassignment. Templates were extracted at six
+radius levels (r = 0, 1, 2, 3, 4, 5) per reaction. A radius-0 template encodes
+only the reaction center atoms; larger radii incorporate successive shells of
+neighboring atoms, increasing chemical specificity at the cost of coverage.
+Throughout extraction, leaving groups were retained explicitly (include_LGs=True)
+and full aromatic and halide atom-type information was preserved. Templates that
+failed RDKit SMARTS validation were discarded.
+
+
+================================================================================
+APPENDIX
+================================================================================
+
+A.X  Reaction Template Extraction: Full Implementation Details
+
+--------------------------------------------------------------------------------
+A.X.1  Extraction Pipeline
+
+Each atom-mapped reaction SMILES of the form "reactants>reagents>products" is
+processed through four steps using the LocalTemplate TemplateExtractor class.
+
+Step 1 — Reagent Separation  (split_reagents)
+    The product's atom-map number set defines the set of reacting atoms. Any
+    molecule whose atoms all appear in this set is classified as a true reactant;
+    molecules with no mapped atoms, or that appear unchanged in the product, are
+    classified as spectator reagents and excluded from template extraction. When
+    multiple mapped products are present, the product with the largest number of
+    mapped atoms is selected as the sole reference product
+    (major_product_only=True).
+
+Step 2 — Changed Atom Detection  (get_changed_atoms)
+    Atoms are paired across reactant and product by their shared atom-map number.
+    An atom is identified as a changed atom (reaction center) if either:
+      (a) its atomic properties — bond order, aromaticity, formal charge, or
+          hydrogen count — differ between reactant and product states, or
+      (b) it is mapped in the reactant but absent from the product
+          (i.e., it is a mapped leaving group).
+
+Step 3 — Fragment Extraction  (get_fragments_for_changed_atoms)
+    Starting from the changed atoms as seeds, expand_atoms_by_neighbors is
+    called r times to collect all atoms within r graph hops of any reaction-
+    center atom. Each collected atom is converted to a SMARTS symbol via
+    get_smarts_for_atom, which encodes the element, aromaticity, and atom-map
+    number. With include_LGs=True, unmapped atoms adjacent to the reaction center
+    are also included in the fragment. AllChem.MolFragmentToSmiles is then called
+    with allHsExplicit=True to produce a fragment SMARTS for both the reactant
+    and product sides, which are joined as "product_frag>>reactant_frag".
+
+Step 4 — Canonicalization  (canonicalize_transform)
+    The raw template is reordered to the forward direction
+    (reactant_frag>>product_frag), passed through
+    canonicalize_atom_mapped_reaction to impose a canonical atom ordering, and
+    then through reassign_atom_mapping to renumber atom maps sequentially from 1.
+    The final template is parsed by AllChem.ReactionFromSmarts and validated with
+    rxn.Validate(); any template with a non-zero validation error count is
+    discarded.
+
+--------------------------------------------------------------------------------
+A.X.2  Extractor Configuration
+
+  Parameter              Value     Description
+  ---------------------  --------  -----------------------------------------------
+  radius                 0–5       Hop distance from reaction center for context
+  include_LGs            True      Leaving groups explicitly included in template
+  simplify_aromatic      False     Aromatic atom types preserved ([c], [n], etc.)
+  simplify_halide        False     Halide atom types preserved ([Cl], [Br], [I])
+  map_all_atoms          False     Only reaction-relevant atoms are mapped
+  major_product_only     True      Largest mapped product selected as reference
+  stereo                 False     Stereochemical information not encoded
+  retro                  False     Forward-direction templates extracted
+
+--------------------------------------------------------------------------------
+A.X.3  Failure Cases and Diagnostics
+
+Failed extractions are recorded per reaction per radius in a separate error CSV.
+The four primary failure categories are:
+
+  Failure Type                  Cause
+  ----------------------------  --------------------------------------------------
+  None:no_product               No atom-mapped product found after reagent
+                                separation (missing or broken atom mapping)
+  None:no_changed_atoms         No atoms differ between reactant and product
+                                states; reaction center cannot be determined
+  None:sanitize_failed          RDKit molecule sanitization raises an exception,
+                                typically caused by valence violations in the
+                                mapped SMILES
+  None:invalid_smarts           Generated SMARTS fails rxn.Validate(), usually
+                                due to unsupported atom environments at the
+                                chosen radius
+  Exception:<step>:<type>:<msg> Unhandled exception at a specific pipeline step
+                                (split_reagents, clean_map, get_changed_atoms,
+                                or template_build), logged with the exception
+                                type and truncated message
+
+Reactions that fail at a given radius are stored as an empty string in the main
+output CSV; the error CSV records row_id, SMILES, and per-radius failure reasons
+to support post-hoc diagnosis.
+
+--------------------------------------------------------------------------------
+A.X.4  Computational Details
+
+  Hardware / Software
+    - Platform   : Windows 10, Python 3.x
+    - Library    : RDKit, LocalTemplate (TemplateExtractor)
+    - Parallelism: multiprocessing.Pool with N_WORKERS = cpu_count() - 2
+    - Chunk size : 200 reactions per worker task (imap_unordered)
+
+  Memory-Safe Batch Writing
+    Results are appended to disk every 5,000 rows (SAVE_BATCH = 5000) to bound
+    peak memory consumption when processing ~2M reactions. A header is written
+    only on the first batch; subsequent batches are appended without a header.
+
+  Resume Support
+    On startup, the output file's existing row count is read from disk. If k rows
+    have already been written, extraction resumes from row k, enabling recovery
+    from interrupted runs without reprocessing completed data.
+
+  RDKit Log Suppression
+    Each subprocess suppresses RDKit's internal logging via
+    RDLogger.DisableLog('rdApp.*') to prevent spurious output from expected
+    sanitization warnings during bulk processing.
+
+================================================================================
+END OF DOCUMENT
+================================================================================

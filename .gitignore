@@ -1,0 +1,61 @@
+# ── 원본 작업 폴더 (GitHub 제외) ──────────────────────────────────────────────
+Baseline/
+chem-detr/
+KBP/
+Results/
+Data/
+
+# ── 대용량 결과 파일 ───────────────────────────────────────────────────────────
+tar/InferenceResults/
+tar/TAR_Results/
+tar/analysis/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ── 데이터/라이브러리 파일 (별도 배포) ───────────────────────────────────────
+*.pkl
+*.npy
+*.npz
+*.csv
+
+# ── 모델 체크포인트 (재현 가능, 코드만 배포) ──────────────────────────────────
+*.pt
+*.tfevents.*
+
+# ── 예외 허용 ────────────────────────────────────────────────────────────────
+!**/train_log.csv
+
+# ── 루트 개인 파일들 ───────────────────────────────────────────────────────────
+API_KEY.txt
+NOTES.md
+paper_sketch.md
+em3_reranking_analysis_summary.md
+chat_log.jsonl
+*.jsonl
+*.json
+normalization_cache.json
+reagent_role_lookup_*.json
+
+# ── json 예외 허용 ────────────────────────────────────────────────────────────
+!**/unified_vocab.json
+!**/class_vocab.json
+em3_*.txt
+up_cases_*.txt
+template_reranking_copyfile
+annotate_reagents_slot*.py
+analyze_*.py
+check_csv_rows.py
+collect_template_rerank_results.py
+find_specific_up_cases.py
+lookup_*.py
+normalize_clusters.py
+read_file.py
+
+# ── 기타 ──────────────────────────────────────────────────────────────────────
+.DS_Store
+*.log
+sbatch_run/
+.claude/

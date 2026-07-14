@@ -1,0 +1,209 @@
+Method
+[Data preparation and preprocessing]
+Pistachio dataset (2026Q1 version).
+정보 누락된 데이터, invalid한 smiles 데이터 제거 및 smiles canoncialize,
+reagent smiles 통일성을 위해서 .으로 연결된 cosolvent 분리, solvent에 담긴 agent도 .으로 연결되어있는데 분리함.
+Pistachio에서 배정되어있는 role이 모호해서 reagent의 role을 reference 선행 논문에서 했던 것처럼 재분류함. (solvent list는 따로 사용함, appendix에 있음)
+(reference: Andronov, Mikhail, et al. "Reagent prediction with a molecular transformer improves reaction data quality." Chemical Science 14.12 (2023): 3235-3246.)
+시약 빈도수 제한 (threshold = 100, 모든 시약이 빈도수가 100번이 넘도록 완전 rare한 시약을 지움)
+고유 반응만 남김
+시약 role별로 개수 제한 (Catalyst 1개, Agent 2개, Solvent 2개, 전체 Reagent는 최대 5개, 최소 1개)
+최종 데이터 정보
+고유 반응 수 1,555,946
+Catalyst 117, Agent 429, Solvent 76
+Train: Val: Test = 8:1:1
+
+기존 연구들은 1개 이상이 될 수 있는 Solvent와 Agent에 대해서는 임의로 순서를 부여함. 이 연구에서도 1개일 경우에는 Solvent1에, 2개일 경우에는 SMILES의 알파벳 순으로 Solvent1, Solvent2로 부여함.
+
+
+
+
+
+[Appendix]
+
+Raw data	22585508
+S,A Quality	13559071
+SMILES, Reaction Class, Reaction Name 정보가 있고, valid한 smiles(canonicalized 함)	13,073,226
+온도 정보 있는 행	7,003,485
+온도 value 추출		6,673,633
+Unique한 반응		2103323
+Reagent 수작업 정제 과정
+- Solvent는 자주 쓰이는 대표 용매 N가지를 용매로 분리함. (List는 Appendix)
+- 정제 규칙은 Appendix (같은 시약인데 다르게 인식되는 것을 방지하기 위해 사용함)
+시약 빈도수 제한 (threshold = 100, 모든 시약이 빈도수가 100번이 넘도록 완전 rare한 시약을 지움)
+최종 남은 반응 수	1968009
+최종 고유 시약 수 	763
+Reagent Reclassification (Pistachio에 원래 들어있는 Role 구분이 부정확해서, 따로 role 구분을 함. 선행연구에서 했던 것처럼)
+마지막으로 같은 RP인데 Reagent나 온도가 달라서 다른 고유 반응으로 인식되는 것을 확인해봤더니, 같은 반응인데(text 내용까지 일치), 다른 특허청에 제출된 것들이었고, text mining과정에서의 오류로 Reagent가 missing되거나 온도가 다르게 인식되는 경우가 대부분이었음. 따라서 RP가 같은데, Reagent가 부분집합이면, 큰 집합의 반응으로 합쳐줌. 온도는 높은 것으로 가져옴. 물론 부분집합 관계가 아니면 그냥 그대로 놔둠 (다른 시약, 온도를 사용한 것으로 인식)
+(원본 1968009, 통합한 후 반응 수 1,772,933, 제거된 반응 수 195,076)
+
+불필요한 시약 제거 (O, N#N, O.O)
+
+
+Reagent 수작업 정제 과정
+규칙 1
+solvent.reagent.water 혹은 solvent.water 혹은 reagent.water의 경우 (water_reagent_map, full_solvent_water_map)
+- water_reagent_map의 key에 해당되는 경우 O 다 지우기
+- full_solvent_water_map의 key에 해당되는 경우 O 다 지우기
+ex) solvent.reagent.O -> solvent.reagent / solvent.O.O.reagent -> solvent.reagent
+
+규칙 2
+solvent.reagent의 경우 (solvent_reagent_map의 key에 해당되는 경우)
+1) 만약 기존 시약들에서 solvent 키나 solvent.solvent 키가 있을 경우, solvent를 지우고 reagent만 남김 (문제점: 배위결합.. CCOCC.[Br][Mg][Br] WO2017037616A1_0169)
+- sol1.sol1.sol1.reag1.reag1 -> reag1
+- sol1.sol1.sol1.reag1.reag2. -> reag1.reag2
+- sol1.sol2.reag1 -> reag1
+- sol1.reag1.reag2 -> reag1.reag2
+
+2 기존 solvent가 없으면, sol과 reag를 분리해서 넣기
+- sol1.sol1.sol1.reag1.reag1 -> sol1;reag1
+- sol1.sol1.sol1.reag1.reag2. -> sol1;reag1.reag2
+- sol1.sol2.reag1 -> sol1;sol2;reag1
+- sol1.reag1.reag2 -> sol1;reag1.reag2
+
+규칙 3
+solvent.solvent의 경우 (solvent_map의 key에 해당되는 경우)
+1) 기존 SOLVENTS 목록에 있는 단일 용매가 있다면,solvent.solvent는 지우기 (이런 경우 보통 cosolvent가 아니라 크로마토그래피이거나 후처리 용매임)
+    - sol1.sol1.sol1 -> 
+    - sol1.sol2 -> 
+2) 단일 용매가 발견되지 않았다면, solvent.solvent는 분리해서 넣음
+    - sol1.sol1.sol1 -> sol1
+    - sol1.sol2 -> sol1;sol2
+
+그 후 Catalysts, Solvents, Agents, Reagents를 각각 ;으로 나눈 후 set로 중복제거하고 sorted해서 저장해줘.
+
+
+SOLVENTS_ALL = {
+ 'C1CCCCC1': 'cyclohexane',
+ 'C1CCOC1': 'THF',
+ 'C1COCCO1': '1,4-dioxane',
+ 'CC#N': 'MeCN;acetonitrile',
+ 'CC(=O)N(C)C': 'DMA;dimethylacetamide',
+ 'CC(C)(C)O': 't-BuOH;tert-butanol',
+ 'CC(C)=O': 'acetone',
+ 'CC(C)CO': 'i-BuOH;isobutanol',
+ 'CC(C)O': 'isopropanol',
+ 'CC(Cl)Cl': '1,1-dichloroethane;ethylidene chloride',
+ 'CC1CCCO1': '2-MeTHF;2-methyl-THF',
+ 'CCC(C)=O': 'MEK;butanone',
+ 'CCCCC': 'pentane',
+ 'CCCCCC': 'hexane',
+ 'CCCCCCC': 'heptane',
+ 'CCCCO': 'n-BuOH;n-butanol',
+ 'CCCO': '1-propanol',
+ 'CCO': 'EtOH;ethanol',
+ 'CCOC(C)=O': 'EtOAc;ethyl acetate',
+ 'CCOCC': 'Et2O;diethyl ether',
+ 'CN(C)C=O': 'DMF',
+ 'CN(C)P(=O)(N(C)C)N(C)C': 'HMPA',
+ 'CN1CCCC1=O': 'N-methyl-2-pyrrolidone;NMP',
+ 'CO': 'MeOH;methanol',
+ 'COC(C)(C)C': 'MTBE;Methyl tert-butyl ether;methyl tert-butyl ether',
+ 'COCCOC': '1,2-DME;DME',
+ 'CS(C)=O': 'DMSO',
+ 'Cc1ccc(C)cc1': 'p-xylene',
+ 'Cc1cccc(C)c1': 'm-xylene',
+ 'Cc1ccccc1': 'toluene',
+ 'Cc1ccccc1C': 'o-xylene',
+ 'ClC(Cl)(Cl)Cl': 'CCl4;carbon tetrachloride',
+ 'ClC(Cl)Cl': 'chloroform',
+ 'ClCCCl': '1,2-dichloroethane',
+ 'ClCCl': 'DCM;dichloromethane',
+ 'Clc1ccccc1': 'chlorobenzene',
+ 'Clc1ccccc1Cl': '1,2-dichlorobenzene',
+ 'O': 'water',
+ 'OCCO': 'ethylene glycol',
+ 'S=C=S': 'CS2;carbon disulfide',
+ 'c1ccccc1': 'benzene',
+ 'C1CCCC1': 'cyclopentane',
+ 'CNC(C)=O': 'N-methylacetamide',
+ 'CC(=O)O': 'acetic acid',
+ 'C[N+](=O)[O-]': 'nitromethane',
+ 'O=C(O)C(F)(F)F': 'TFA',
+ 'c1ccncc1': 'pyridine',
+ 'C1COCCOCCOCCOCCO1': 'EYO',
+ 'CC(=O)C#N': 'AcCN',
+ 'CC=C(C)C': 'pentene',
+ 'CCCC#N': 'butyronitrile',
+ 'CCCC(C)O': '2-pentanol',
+ 'CCCCCCCCCCCC': 'dodecane',
+ 'COC': 'dimethyl ether',
+ 'COC(C)=O': 'methyl acetate',
+ 'COC1CCCC1': 'CPME',
+ 'CS(C)(=O)=O': 'DMSO2',
+ 'CSC': 'DMS',
+ 'Cc1ccc(C(C)C)cc1': 'p-cymene',
+ 'N#Cc1ccccc1': 'benzonitrile',
+ 'OC(C(F)(F)F)C(F)(F)F': 'HFIP',
+ 'OCC(F)(F)F': 'TFE',
+ 'OCc1ccccc1': 'benzyl alcohol',
+ '[2H]C(Cl)(Cl)Cl': 'CDCl3',
+ 'c1ccsc1': 'thiophene',
+ 'CC(=O)CC(C)C': '4-methylpentan-2-one;MIBK',
+ 'CC(=O)OC(C)C': 'isopropyl acetate',
+ 'CC(C)CCO': '3-methyl-1-butanol;isoamyl alcohol',
+ 'CC(C)OC(C)C': 'DIPE;diisopropyl ether',
+ 'CCC#N': 'propionitrile',
+ 'CCC(C)(C)O': 'tert-amyl alcohol',
+ 'CCC(C)O': '2-butanol;s-BuOH',
+ 'CCCC(C)C': 'isohexane',
+ 'CCCCCO': '1-pentanol;pentanol',
+ 'CCCCOC(C)=O': 'butyl acetate',
+ 'CCCCOCCCC': 'butyl ether;dibutyl ether',
+ 'CCOCCO': '2-ethoxyethanol',
+ 'CCc1ccccc1': 'ethylbenzene',
+ 'CN1CCN(C)C1=O': '1,3-dimethyl-2-imidazolidinone;DMI',
+ 'COCC(C)O': '1-methoxy-2-propanol;methoxyisopropanol',
+ 'COCCO': '2-methoxyethanol;methoxyethanol',
+ 'COCCOCCOC': 'diglyme',
+ 'COc1ccccc1': 'anisole',
+ 'Cc1cc(C)cc(C)c1': 'mesitylene',
+ 'O=S1(=O)CCCC1': 'sulfolane',
+ 'OCC(O)CO': 'glycerin;glycerol',
+ 'OCC1CCCO1': 'THFA',
+ 'OCCOCCO': 'diethylene glycol',
+ 'c1ccc(Oc2ccccc2)cc1': 'diphenyl ether',
+ 'CC(=O)OC(C)(C)C': 'tert-butyl acetate',
+ 'CC=O': 'acetaldehyde',
+ 'CN1CCCN(C)C1=O': 'DMPU',
+ 'COC(C)O': '1-methoxyethanol',
+ 'FC(F)(F)c1ccccc1': 'trifluorotoluene',
+ 'O=[N+]([O-])c1ccccc1': 'nitrobenzene',
+ 'Oc1ccccc1': 'phenol'
+ }
+
+- Reagents NaN 개수: 35531
+Reagents NaN 비율: 1.69%
+총 반응 수: 2067792
+전체 고유 시약 수: 63976
+100번 이상 등장 시약 수: 834
+50-100번 등장 시약 수: 373
+50번 이하 등장 시약 수: 62769
+
+-	Reagent Reclassification (Reference 논문에서 쓴 방법)
+단, Solvent는 SOLVENTS_ALL 에 있는 Solvent들을 사용함.
+-	The roles of the molecules are determined using the following heuristics:
+-	(1) Every molecule in a SMILES string of reagents is assigned a role in the following order of decreasing priority: solvent, catalyst, oxidizing agent, reducing agent, acid, base, unspecified role.
+-	(2) A molecule is a solvent if it is one of the standard 46 solvent molecules, like THF, hexane, benzene etc.
+-	(3) A molecule is a catalyst if
+-	(a) it is a free metal.
+-	(b) it contains a cycle together with a metal or phosphorus atom.
+-	(c) it is a metal halide.
+-	(4) A molecule is an oxidizing agent if
+-	(a) it contains a peroxide group.
+-	(b) it contains at least two oxygen atoms and a transition metal or iodine atom.
+-	(c) it is a standard oxidizing agent like free halogens.
+-	(d) it is a standard halogenating agent.
+-	(e) it contains both a positively charged atom and a negatively charged oxygen but is not a nitrate anion.
+-	(5) A molecule is a reducing agent if it is one of the standard reducing agents or some hydride of boron, silicon or aluminum.
+-	(6) A molecule is an acid if
+-	(a) it is a derivative of sulphuric, sulfamic or phosphoric acid with the acidic –OH group intact.
+-	(b) it is a carboxylic acid.
+-	(c) it is a hydrohalic acid or a common Lewis acid like aluminium chloride.
+-	(7) A molecule is a base if
+-	(a) it is a tertiary or secondary amine.
+-	(b) it contains a negatively charged oxygen atom and consists of only C, O, S, and P atoms.
+-	(c) it consists only of lithium and carbon.
+-	(d) it is the hydride ion or the hydroxide ion.
+
+Reagent Count Distribution
