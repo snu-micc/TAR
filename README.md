@@ -44,7 +44,13 @@ Data/
   MPNN_data/GCN_data_{train,val,test}.csv
 ```
 
-**Model checkpoints:** Pre-trained checkpoints for all three models (model weights only, not the underlying data) are available on Figshare. They are too large for GitHub, so download them and place them at:
+**Model checkpoints:** Pre-trained checkpoints for all three models (model weights only, not the underlying data) are available on Figshare: [doi.org/10.6084/m9.figshare.33004592](https://doi.org/10.6084/m9.figshare.33004592). They are too large for GitHub. Download `tar_checkpoints.tar.gz` and extract it from the repository root:
+
+```bash
+tar -xzf tar_checkpoints.tar.gz
+```
+
+This places the checkpoints at:
 
 ```
 models/gao/gao2018/best_model.pt
