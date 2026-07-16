@@ -26,6 +26,30 @@ Templates are matched at six radii (r0–r5); the finest matching radius is used
 
 ---
 
+## Data and Checkpoint Availability
+
+**Data:** This study uses the Pistachio dataset (NextMove Software), which is licensed and **cannot be redistributed**. We therefore do not provide the processed data. To reproduce it, obtain your own Pistachio 2026Q1 license and run the preprocessing pipeline in `data_preparation/` (see [Data Preparation](#data-preparation) below), which produces:
+
+```
+Data/
+  data_{train,val,test}.csv
+  data_{train,val,test}_template.csv
+  labels/{cat,solv,reag}_labels.csv
+  MPNN_data/GCN_data_{train,val,test}.csv
+```
+
+**Model checkpoints:** Pre-trained checkpoints for all three models (model weights only, not the underlying data) are available on Figshare. They are too large for GitHub, so download them and place them at:
+
+```
+models/gao/gao2018/best_model.pt
+models/quarc/roleagnostic_gnn_rxnclass/best_model.pt
+models/reacon/GCN_{cat,solv0,solv1,reag0,reag1}/fold_0/model_0/model.pt
+```
+
+With the checkpoints and your regenerated `Data/` in place you can run inference directly (Step 3 below) without retraining. Retraining (Step 0) is optional and only needed to reproduce the checkpoints from scratch.
+
+---
+
 ## Repository Structure
 
 ```
@@ -82,25 +106,7 @@ pip install torch rdkit-pypi chemprop==1.6.1   # for GAO/QUARC
 # Note: models/reacon/ uses the bundled chemprop (v1.6.1) — do NOT pip-install for Reacon
 ```
 
-**Data:** This study uses the Pistachio dataset (NextMove Software), which is licensed and **cannot be redistributed**. We therefore do not provide the processed data. To reproduce it, obtain your own Pistachio 2026Q1 license and run the preprocessing pipeline in `data_preparation/` (see [Data Preparation](#data-preparation) below), which produces:
-
-```
-Data/
-  data_{train,val,test}.csv
-  data_{train,val,test}_template.csv
-  labels/{cat,solv,reag}_labels.csv
-  MPNN_data/GCN_data_{train,val,test}.csv
-```
-
-**Model checkpoints:** Pre-trained checkpoints for all three models are provided. They are too large for GitHub, so download them from the external archive and place them at:
-
-```
-models/gao/gao2018/best_model.pt
-models/quarc/roleagnostic_gnn_rxnclass/best_model.pt
-models/reacon/GCN_{cat,solv0,solv1,reag0,reag1}/fold_0/model_0/model.pt
-```
-
-With the checkpoints and your regenerated `Data/` in place you can run inference directly (Step 3 below) without retraining. Retraining (Step 0) is optional and only needed to reproduce the checkpoints from scratch.
+See [Data and Checkpoint Availability](#data-and-checkpoint-availability) for how to obtain the dataset and pre-trained checkpoints.
 
 ---
 
@@ -206,5 +212,15 @@ python extract_templates_pistachio2m.py \
 ```
 
 Run once per split to produce `Data/data_{train,val,test}_template.csv`.
+
+---
+
+## Contact
+
+Implementation of TAR developed by Prof. Yousung Jung's group at Seoul National University (contact: yousung@gmail.com).
+
+- Nahyeon Kim — nahappy1209@gmail.com
+- Shuan Chen — shuan75@snu.ac.kr
+- Yousung Jung (PI) — yousung@gmail.com
 
 
