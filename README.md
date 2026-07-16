@@ -2,7 +2,7 @@
 
 Code for the paper: **"Bridging the Gap Between AI Predictions and Chemical Conventions: Template-Guided Reranking for Accurate Reagent Set Suggestion"**
 
-Given a reactant→product SMILES pair, the task is to predict the reaction conditions (catalysts, solvents, reagents). We show that post-hoc reranking of ML beam-search outputs using a reaction template prior consistently improves exact-match accuracy across multiple models.
+Given a reactant→product SMILES pair, the task is to predict the reaction conditions (catalysts, solvents, reagents). We present Transformation-Aware Reranking (TAR), a post-hoc framework that re-prioritizes candidate reagent sets as integrated units by anchoring neural predictions to historically co-observed combinations within transformation-specific contexts, derived from multi-scale reaction templates. TAR consistently improves exact-match accuracy across multiple base models.
 
 <p align="center">
   <img src="assets/tar_flow.png" alt="Transformation-Aware Reranking (TAR) workflow" width="900">
