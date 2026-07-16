@@ -12,17 +12,23 @@ Given a reactant→product SMILES pair, the task is to predict the reaction cond
 
 ## Method: Transformation-Aware Reranking (TAR)
 
-Each candidate condition set $c_i$ from a model's beam is rescored:
+For each test reaction, TAR rescores the top-30 candidate condition sets $R = \{r_1, \dots, r_{30}\}$ from a base ML model (with model log-probability scores $S_\text{ML}(r_i)$) against a Template-Condition Library. The final reranked score is:
 
-$$\text{score}(c_i) = \log P_\text{ML}(c_i) + \lambda_\text{eff} \cdot \log P(\text{flat-set} \mid \text{template})$$
+$$S_\text{final}(r_i) = S_\text{ML}(r_i) + \lambda_\text{eff} \cdot S_\text{anchor}(r_i \mid T)$$
 
-with entropy-adaptive weighting:
+**Mechanistic anchor score** — the log empirical conditional probability of $r_i$ under the matched template $T$, with Laplace smoothing ($\beta = 0.5$):
 
-$$\lambda_\text{eff} = \frac{\lambda}{1 + \alpha \cdot H(T)}$$
+$$S_\text{anchor}(r_i \mid T) = \log \frac{\text{count}(r_i, T) + \beta}{\sum_j \text{count}(r_j, T) + \beta \cdot (N_T + 1)}$$
 
-where $H(T)$ is the Shannon entropy of the template's condition distribution. High-entropy (ambiguous) templates receive less weight; $\alpha = 0$ recovers fixed-$\lambda$ reranking.
+where $\text{count}(r_i, T)$ is the number of reactions in which condition set $r_i$ co-occurred with template $T$, and $N_T$ is the number of distinct condition sets observed under $T$.
 
-Templates are matched at six radii (r0–r5); the finest matching radius is used. The template library is built from training data only.
+**Entropy-adaptive weight** — modulated by the Shannon entropy $H(T)$ of the condition-set distribution under $T$:
+
+$$\lambda_\text{eff} = \frac{\lambda}{1 + \alpha \cdot H(T)}, \qquad H(T) = -\sum_i P(r_i \mid T)\,\log_2 P(r_i \mid T), \qquad P(r_i \mid T) = \frac{\text{count}(r_i, T)}{\sum_j \text{count}(r_j, T)}$$
+
+High-entropy (diverse-condition) templates receive less weight; $\alpha = 0$ recovers fixed-$\lambda$ reranking.
+
+Templates are matched hierarchically across six radii (r5 → r0); the finest matching radius is used. The Template-Condition Library is built from the training and validation sets only.
 
 ---
 
