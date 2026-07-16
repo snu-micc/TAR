@@ -26,7 +26,7 @@ where $\text{count}(r_i, T)$ is the number of reactions in which condition set $
 
 $$\lambda_\text{eff} = \frac{\lambda}{1 + \alpha \cdot H(T)}, \qquad H(T) = -\sum_i P(r_i \mid T)\,\log_2 P(r_i \mid T), \qquad P(r_i \mid T) = \frac{\text{count}(r_i, T)}{\sum_j \text{count}(r_j, T)}$$
 
-High-entropy (diverse-condition) templates receive less weight.
+Low-entropy templates, where a strong empirical convention dominates, receive strong anchoring, whereas high-entropy (diverse-condition) templates receive less weight.
 
 Templates are matched hierarchically across six radii (r5 → r0); the finest matching radius is used. The Template-Condition Library is built from the training and validation sets only.
 
