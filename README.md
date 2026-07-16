@@ -26,7 +26,7 @@ where $\text{count}(r_i, T)$ is the number of reactions in which condition set $
 
 $$\lambda_\text{eff} = \frac{\lambda}{1 + \alpha \cdot H(T)}, \qquad H(T) = -\sum_i P(r_i \mid T)\,\log_2 P(r_i \mid T), \qquad P(r_i \mid T) = \frac{\text{count}(r_i, T)}{\sum_j \text{count}(r_j, T)}$$
 
-High-entropy (diverse-condition) templates receive less weight; $\alpha = 0$ recovers fixed-$\lambda$ reranking.
+High-entropy (diverse-condition) templates receive less weight.
 
 Templates are matched hierarchically across six radii (r5 → r0); the finest matching radius is used. The Template-Condition Library is built from the training and validation sets only.
 
@@ -34,7 +34,7 @@ Templates are matched hierarchically across six radii (r5 → r0); the finest ma
 
 ## Data and Checkpoint Availability
 
-**Data:** This study uses the Pistachio dataset (NextMove Software), which is licensed and **cannot be redistributed**. We therefore do not provide the processed data. To reproduce it, obtain your own Pistachio 2026Q1 license and run the preprocessing pipeline in `data_preparation/` (see [Data Preparation](#data-preparation) below), which produces:
+**Data:** This study uses the Pistachio dataset 2026Q1 (NextMove Software), which is licensed and **cannot be redistributed**. We therefore do not provide the processed data. To reproduce it, obtain your own Pistachio 2026Q1 license and run the preprocessing pipeline in `data_preparation/` (see [Data Preparation](#data-preparation) below), which produces:
 
 ```
 Data/
